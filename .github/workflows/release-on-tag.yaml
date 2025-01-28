@@ -9,31 +9,38 @@ jobs:
   create-release:
     runs-on: ubuntu-latest
     steps:
-      # Step 1: Check out the repository
       - name: Check out the repository
         uses: actions/checkout@v3
 
-      # Step 2: Get the latest tag
       - name: Get the latest tag
         id: get_latest_tag
         run: echo "tag=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
 
-      # Step 3: Gather commit messages since the previous tag
-      - name: Gather commit messages
-        id: gather_commits
+      - name: Get previous tag
         run: |
-          previous_tag=$(git describe --tags --abbrev=0 HEAD^)
-          commit_messages=$(git log $previous_tag..HEAD --pretty=format:"%s")
+          # Attempt to get the previous tag
+          if git rev-list --tags --skip=1 --max-count=1; then
+            previous_tag=$(git describe --tags --abbrev=0 "$(git rev-list --tags --skip=1 --max-count=1)")
+          else
+            previous_tag=""
+          fi
+          echo "previous_tag=$previous_tag" >> $GITHUB_ENV
+
+      - name: Get commit messages
+        run: |
+          # If there is no previous tag, get all commit messages; otherwise, get commits between tags
+          if [ -z "$previous_tag" ]; then
+            commit_messages=$(git log --pretty=format:"%s")
+          else
+            commit_messages=$(git log $previous_tag..$latest_tag --pretty=format:"%s")
+          fi
           echo "commit_messages=$commit_messages" >> $GITHUB_ENV
 
-      # Step 4: Create a GitHub Release
       - name: Create GitHub Release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ env.tag }}
-          release_name: ${{ env.tag }}
+          tag_name: ${{ env.latest_tag }}
+          release_name: ${{ env.latest_tag }}
           body: ${{ env.commit_messages }}
-          draft: false
-          prerelease: false
