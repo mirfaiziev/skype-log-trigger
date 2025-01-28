@@ -18,9 +18,10 @@ jobs:
 
       - name: Get previous tag
         run: |
-          # Attempt to get the previous tag
-          if git rev-list --tags --skip=1 --max-count=1; then
-            previous_tag=$(git describe --tags --abbrev=0 "$(git rev-list --tags --skip=1 --max-count=1)")
+          # Attempt to get the previous tag safely
+          previous_tag_commit=$(git rev-list --tags --skip=1 --max-count=1)
+          if [ -n "$previous_tag_commit" ]; then
+            previous_tag=$(git describe --tags --abbrev=0 "$previous_tag_commit")
           else
             previous_tag=""
           fi
